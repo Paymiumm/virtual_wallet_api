@@ -40,6 +40,8 @@ class Config:
     MAIL_PASSWORD = '@1OBINNN'
     MAIL_DEFAULT_SENDER = 'myapp@app.com'
 
+    SECURITY_ID = 'SOMETHINGHERERE'
+
 
 
     JSON_DECODE_ERROR_MESSAGE = 'invalid values'
