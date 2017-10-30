@@ -12,9 +12,10 @@ from flask import session
 from flask_restplus import Resource
 from ext_declaration import api,db
 from flask_restplus import reqparse, fields, inputs
-from data import create_account_handler,resend_Mail,update_account_handler,otp_generator,log_user_in,search_user,load_Chat
+from data import create_account_handler,resend_mail,update_account_handler,otp_generator,log_user_in,search_user,load_Chat
 from flask_json import json_response
 from flask import request,render_template,make_response,session
+from api_version.utils import send_link_with_email, send_link_with_text
 
 
 
@@ -48,51 +49,50 @@ model = api.model('User', {
 })
 class create_Account(Resource):
 
-	"""
-	This class handles the creation of an account for a user , to start using the paymiumm magic functionality
-	it takes four parameters which are email, usr, name, and phn
-	method:Post
-	"""
-		
-	def post(self):
-		
-		user_ = post_params.parse_args()
-		session['user']=user_.get('email')
-		print user_.get('email')
+    """
+    This class handles the creation of an account for a user , to start using the paymiumm magic functionality
+    it takes four parameters which are email, usr, name, and phn
+    method:Post
+    """
 
-		
-		print "Creating account..."
-		exec_account_creation=create_account_handler(email=user_.get('email'),user=user_.get('usr'),name=user_.get('name'),num=user_.get('phn'))
+    def post(self):
 
-		if exec_account_creation==True:
-			return json_response(res='true',reason="Data was inserted into db successfully")#if all went well
+        user_ = post_params.parse_args()
+        session['user']=user_.get('email')
+        print(user_.get('email'))
 
-		elif exec_account_creation=="user":
-			return json_response(res='user',reason="Username already exist")#if usernAme already exist
+        print("Creating account...")
+        exec_account_creation=create_account_handler(email=user_.get('email'),user=user_.get('usr'),name=user_.get('name'),num=user_.get('phn'))
 
-		elif exec_account_creation=="email":
-			#if email already exist
-			return json_response(res='email',reason="Email already exist")
+        if exec_account_creation:
+            return json_response(res='true',reason="Data was inserted into db successfully")#if all went well
 
-		elif exec_account_creation=="number":
-			#if phone number already exist
-			return json_response(res='number',reason="Phone number already exist")
+        elif exec_account_creation == "user":
+            return json_response(res='user',reason="Username already exist")
 
-		elif exec_account_creation=="mail":
-			#email couldn't send sucessfully
-			return json_response(res='mailErr',reason="Account activation mail wasn't sent successfully")
+        elif exec_account_creation=="email":
+            #if email already exist
+            return json_response(res='email',reason="Email already exist")
 
-		elif exec_account_creation=="error":
-			#regex validation was not passed
-			return json_response(res='error',reason="validation failed because a member of the json parameters didn't match regex validations")
+        elif exec_account_creation == "number":
+            #if phone number already exist
+            return json_response(res='number', reason="Phone number already exist")
 
-		else:
-			#code exception occured
-			return json_response(res='false',reason="An exception was thrown, an error occured either code wise, data wise or implementation wise, usually sql errors")
+        elif exec_account_creation == "mail":
+            #email couldn't send sucessfully
+            return json_response(res='mailErr',reason="Account activation mail wasn't sent successfully")
+
+        elif exec_account_creation == "error":
+            #regex validation was not passed
+            return json_response(res='error', reason="validation failed because a member of the json parameters didn't match regex validations")
+
+        else:
+            #code exception occured
+            return json_response(res='false', reason="An exception was thrown, an error occured either code wise, data wise or implementation wise, usually sql errors")
 
 
-		# return Authenticate(app,clientKey,email,password)
-		# startService()
+        # return Authenticate(app,clientKey,email,password)
+        # startService()
 
 #----------------------------------------------------------------------------------
 #	end of account creation script
@@ -125,36 +125,36 @@ model = api.model('ResendMail', {
 })
 class resend_activation_mail(Resource):
 
-	"""
-	This class handles the resending of activation mail to the user's passed email, using the smtp functionality
-	it takes one parameters which are email
-	method:Post
-	"""
-		
-	def post(self):
-		
-		param = resend_mail_params.parse_args()
-		email= param.get('email')
-		print param.get('email')
+    """
+    This class handles the resending of activation mail to the user's passed email, using the smtp functionality
+    it takes one parameters which are email
+    method:Post
+    """
+
+    def post(self):
+
+        param = resend_mail_params.parse_args()
+        email= param.get('email')
+        print(param.get('email'))
 
 
-		print "Resending Mail..."
-		exec_mail_resending=resend_Mail(email=email)
+        print("Resending Mail...")
+        exec_mail_resending=resend_mail(email=email)
 
-		if exec_mail_resending==True:
-			return json_response(res='sent',reason="Data was inserted into db successfully")#if all went well
+        if exec_mail_resending:
+            return json_response(res='sent',reason="Data was inserted into db successfully")#if all went well
 
-		elif exec_mail_resending=="invalid":
-			#email couldn't send sucessfully
-			return json_response(res='invalid',reason="The email was tampered with and therefore did not exist in the database/ was used on an already confirmed account")
+        elif exec_mail_resending=="invalid":
+            #email couldn't send sucessfully
+            return json_response(res='invalid',reason="The email was tampered with and therefore did not exist in the database/ was used on an already confirmed account")
 
-		elif exec_mail_resending=="mail":
-			#email couldn't send sucessfully
-			return json_response(res='mailErr',reason="Account activation mail wasn't sent successfully",ses=session['user'])
+        elif exec_mail_resending=="mail":
+            #email couldn't send sucessfully
+            return json_response(res='mailErr',reason="Account activation mail wasn't sent successfully",ses=session['user'])
 
-		else:
-			#code exception occured
-			return json_response(res='false',reason="An exception was thrown, an error occured either code wise, data wise or implementation wise, usually sql errors or user attempted to change the email during request to something that didnt match our records or regex checking")
+        else:
+            #code exception occured
+            return json_response(res='false',reason="An exception was thrown, an error occured either code wise, data wise or implementation wise, usually sql errors or user attempted to change the email during request to something that didnt match our records or regex checking")
 
 
 
@@ -194,41 +194,41 @@ model = api.model('Personal', {
 })
 class personal_form(Resource):
 
-	"""
-	This class handles the creation of an account for a user , to start using the paymiumm magic functionality
-	it takes four parameters which are email, usr, name, and phn
-	method:Post
-	"""
-		
-	def post(self):
-		if( 'user' in session):
-			params = param.parse_args()
-			add=params.get('ad_d_r_eSS')
-			state=params.get('statE')
-			city=params.get('city')
-			postal=params.get('postalC')
-			dob=params.get('dob')
+    """
+    This class handles the creation of an account for a user , to start using the paymiumm magic functionality
+    it takes four parameters which are email, usr, name, and phn
+    method:Post
+    """
+
+    def post(self):
+        if 'user' in session:
+            params = param.parse_args()
+            add=params.get('ad_d_r_eSS')
+            state=params.get('statE')
+            city=params.get('city')
+            postal=params.get('postalC')
+            dob=params.get('dob')
 
 
-			
-			print "Updating personal details..."
-			exec_account_update=update_account_handler(add=add,state=state,city=city,postal=postal,dob=dob)
-			print exec_account_update
-			if exec_account_update==True:
-				return json_response(res='true',reason="Personal Data was inserted into Table successfully")#if all went well
 
-			if exec_account_update=='not_logged':
-				return json_response(res='not_logged',reason="User is currently not logged in..or session has expired")#if all went well
+            print("Updating personal details...")
+            exec_account_update=update_account_handler(add=add,state=state,city=city,postal=postal,dob=dob)
+            print(exec_account_update)
+            if exec_account_update:
+                return json_response(res='true',reason="Personal Data was inserted into Table successfully")#if all went well
 
-			else:
-				#code exception occured
-				return json_response(res='false',reason="An exception was thrown, either SQL error or user does not exist or invalid state was selected")
-		else:
-			return json_response(res="false",reason="No session was found for user")
+            if exec_account_update == 'not_logged':
+                return json_response(res='not_logged',reason="User is currently not logged in..or session has expired")#if all went well
+
+            else:
+                #code exception occured
+                return json_response(res='false',reason="An exception was thrown, either SQL error or user does not exist or invalid state was selected")
+        else:
+            return json_response(res="false",reason="No session was found for user")
 
 
-		# return Authenticate(app,clientKey,email,password)
-		# startService()
+        # return Authenticate(app,clientKey,email,password)
+        # startService()
 
 #----------------------------------------------------------------------------------
 #	end of account creation script
@@ -260,28 +260,28 @@ otp_model = api.model('OTP', {
 })
 
 class generate_password_token(Resource):
-	"""
-	This class handles the generating and sending of OTP to user's mail or phone number to login, to start using the paymiumm magic functionality
-	it takes two parameters which are email/usr and type
-	method:Post
-	"""
-	def post(self):
-		params = param_.parse_args()
-		user=params.get('usr')
-		type_=params.get('t_y_pE')
-		otp_handler=otp_generator(user=user,type_=type_)
-		if otp_handler==True:
-				return json_response(res='success',reason="OTP was sent successfully")#if all went well
+    """
+    This class handles the generating and sending of OTP to user's mail or phone number to login, to start using the paymiumm magic functionality
+    it takes two parameters which are email/usr and type
+    method:Post
+    """
+    def post(self):
+        params = param_.parse_args()
+        user=params.get('usr')
+        type_=params.get('t_y_pE')
+        otp_handler=otp_generator(user=user,type_=type_)
+        if otp_handler:
+            return json_response(res='success',reason="OTP was sent successfully")#if all went well
 
-		elif otp_handler=='unconfirmed':
-				return json_response(res='unconfirmed',reason="This account email hasn't been successfully activated")#if all went well
+        elif otp_handler=='unconfirmed':
+            return json_response(res='unconfirmed',reason="This account email hasn't been successfully activated")#if all went well
 
-		elif otp_handler=='invalid':
-				return json_response(res='invalid',reason="This account username/email doesn't exist")#if all went well
+        elif otp_handler=='invalid':
+            return json_response(res='invalid',reason="This account username/email doesn't exist")#if all went well
 
-		else:
-				return json_response(res='error',reason="It's either email/text message couldn't be sent successfully or a code error occured")#if all went well
-		
+        else:
+            return json_response(res='error',reason="It's either email/text message couldn't be sent successfully or a code error occured")#if all went well
+
 
 
 #----------------------------------------------------------------------------------
@@ -305,7 +305,7 @@ login = api.model('Login', {
     'usr': fields.String(description='The username of the intending user to login'),
     'pwd': fields.String(description='The OTP you recieved'),
     't__Ukn__r_z_A_R': fields.String(description='The Device identity')
-    
+
 })
 
 @api.expect(login, validate=True)
@@ -317,19 +317,19 @@ login = api.model('Login', {
 class login_handler(Resource):
 
 
-	"""
-	This class handles the login of user into his account, to start using the paymiumm magic functionality
-	it takes two parameters which are email/usr and password
-	method:Post
-	"""
-	def post(self):
-		params = param__.parse_args()
-		user=params.get('usr')
-		pwd=params.get('pwd')
-		did=params.get('t__Ukn__r_z_A_R')#device id
-		return log_user_in(user=user,pwd=pwd,device=did)
-		# return json_response(res="hy")
-		
+    """
+    This class handles the login of user into his account, to start using the paymiumm magic functionality
+    it takes two parameters which are email/usr and password
+    method:Post
+    """
+    def post(self):
+        params = param__.parse_args()
+        user=params.get('usr')
+        pwd=params.get('pwd')
+        did=params.get('t__Ukn__r_z_A_R')#device id
+        return log_user_in(user=user,pwd=pwd,device=did)
+    # return json_response(res="hy")
+
 
 #----------------------------------------------------------------------------------
 #	end of login script
@@ -349,7 +349,7 @@ class login_handler(Resource):
 
 # model = api.model('Search', {
 #     'query': fields.String(description='Search Query'),
-    
+
 # })
 
 # @api.expect(model, validate=True)
@@ -361,16 +361,16 @@ class login_handler(Resource):
 class search_handler(Resource):
 
 
-	"""
-	This class handles the searching of user's from paymiumm, to start using the paymiumm magic functionality
-	it takes one parameter which is query
-	method:Get
-	"""
-	def get(self,query):
-		print query
-		return search_user(query)
-		# return json_response(res="hy")
-		
+    """
+    This class handles the searching of user's from paymiumm, to start using the paymiumm magic functionality
+    it takes one parameter which is query
+    method:Get
+    """
+    def get(self,query):
+        print(query)
+        return search_user(query)
+    # return json_response(res="hy")
+
 
 #----------------------------------------------------------------------------------
 #	end of search script
@@ -396,28 +396,85 @@ class search_handler(Resource):
 class chat_view_handler(Resource):
 
 
-	"""
-	This class handles the searching of user's from paymiumm, to start using the paymiumm magic functionality
-	it takes one parameter which is query
-	method:Get
-	"""
-	def get(self,user):
+    """
+    This class handles the searching of user's from paymiumm, to start using the paymiumm magic functionality
+    it takes one parameter which is query
+    method:Get
+    """
+    def get(self,user):
 
-		return load_Chat(user)
-		# return json_response(res="hy")
-		
+        return load_Chat(user)
+    # return json_response(res="hy")
+
 
 #----------------------------------------------------------------------------------
 #	end of search script
 #----------------------------------------------------------------------------------
-		
+
 
 class testSession(Resource):
-	"""docstring for testSession"""
-	def get(self,name):
-		session['user']=name
-		session['device']=name
-		return json_response(res="done")
-		
+    """docstring for testSession"""
+    def get(self,name):
+        session['user']=name
+        session['device']=name
+        return json_response(res="done")
+
+# -------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------
+#  script below handles sending of money through text or sms
+#----------------------------------------------------------
+
+params = api.parser()
+params.add_argument('email', required=True, help='Should not be left blank')
+params.add_argument('amount', required=True, help='Should not be left blank')
+params.add_argument('message', required=False, help='An optional value')
+
+
+@api.doc(responses={
+    200: 'success',
+    401: 'failed'
+}, params={
+    'email': 'A email',
+    'amount': 'the amount',
+    'message': 'which is optional'
+})
+class SendTransactSMS(Resource):
+    def post(self):
+        param = params.parse_args()
+
+        execute_action = send_link_with_email(email=param.get('email'), amount=param.get('amount'), message=param.get('message'))
+
+        if execute_action:
+            return json_response(res='sent', reason='email was sent successfully')
+
+        elif not execute_action:
+            return json_response(res='failed', reason='an error occurred while processing')
+
+
+get_params = api.parser()
+get_params.add_argument('number', required=True, help='Should not be left blank')
+get_params.add_argument('amount', required=True, help='Should not be left blank')
+get_params.add_argument('message', required=False, help='An optional value')
+
+
+@api.doc(responses={
+    200: 'success',
+    401: 'failed'
+}, params={
+    'email': 'A email',
+    'amount': 'the amount',
+    'message': 'which is optional'
+})
+class SendTransactText(Resource):
+    def post(self):
+        param = get_params.parse_args()
+
+        execute_action = send_link_with_text(number=param.get('number'), amount=param.get('amount'), message=param.get('message'))
+
+        if execute_action:
+            return json_response(res='sent', reason='text was sent successfully')
+
+        elif not execute_action:
+            json_response(res='failed', reason='an error occured while processing')
 
 
