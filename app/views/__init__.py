@@ -527,93 +527,137 @@ class testSession(Resource):
 #  script below handles sending of money through sms or email
 #----------------------------------------------------------
 
-transfer_email_param = api.parser()
-transfer_email_param.add_argument('email',type=inputs.regex("([a-zA-Z0-9_\.\-])+\@(([a-zA-Z0-9\-])+\.)+([a-zA-Z0-9]{2,4})+"), required=True, help='Should not be left blank')
-transfer_email_param.add_argument('amount',type=inputs.regex("\d+[.]?\d{2}"), required=True, help='Should not be left blank')
-transfer_email_param.add_argument('message', required=False, help='An optional value')
+params = api.parser()
+params.add_argument('email', required=True, help='Should not be left blank')
+params.add_argument('amount', required=True, help='Should not be left blank')
+params.add_argument('message', required=False, help='An optional value')
 
-model = api.model('Transfer_Funds_Email', {
-    'message': fields.String(description='optional message to accompany the funds transfer'),
-    'amount': fields.String(description='Amount To Send...',required=True),
-    'email': fields.String(description='Email of the user to recieve the funds...',required=True),
-    # 'email': fields.String(description='Email Of recipient...')
-    
-})
 
-@api.expect(model, validate=True)
 @api.doc(responses={
     200: 'success',
     401: 'failed'
+}, params={
+    'email': 'A email',
+    'amount': 'the amount',
+    'message': 'which is optional'
 })
-class send_transact_email(Resource):
+class SendTransactSMS(Resource):
+    def post(self):
+        if 'user' in session and 'device' in session:
+            param = params.parse_args()
 
-	"""
-	This class handles the sending of fuuds among user's and non-user's of paymiumm using email, to start using the paymiumm magic functionality
-	it takes three parameter which is email,amount,message
-	method:Post
-	"""
-	def post(self):
-		params = transfer_email_param.parse_args()
-		if 'user' in session and 'device' in session:
-			email=params.get("email")
-			msg=params.get("message")
-			amount=params.get("amount")
+            user = User()
 
-			execute_action = transfer_funds_with_email(email=email, amount=amount, message=msg)
+            if user.verify_paypin(param.get('paypin')):
 
-			if execute_action:
-				return json_response(res='sent', reason='email was sent successfully')
-			else:
-				print (execute_action)
-				return json_response(res='failed', reason='an error occurred while processing')
+                execute_action = send_link_with_email(email=param.get('email'), amount=param.get('amount'), user_id=session['user'] ,message=param.get('message'))
 
-		else:
+                if execute_action:
+                    return json_response(res='sent', reason='email was sent successfully')
 
-			return json_response(res='not_logged', reason='no user is loggged in')
+                elif not execute_action:
+                    return json_response(res='failed', reason='an error occurred while processing')
 
-transfer_text_param = api.parser()
-# transfer_text_param.add_argument('number',type=inputs.regex("([0|\+[0-9]{1,5})?([7-9][0-9]{9})"), required=True, help='Should not be left blank')
-# transfer_text_param.add_argument('amount',type=inputs.regex("\d+[.]?\d{2}"), required=True, help='Should not be left blank')
-# transfer_text_param.add_argument('message', required=False, help='An optional value')
+            else:
+                return json_response(res='invalid', reason='Invalid paypin')
 
-transfer_text_param.add_argument('number', type=inputs.regex("([0|\+[0-9]{1,5})?([0-9][0-9]{9})"), help='Number Should not be left blank', required=True)
-transfer_text_param.add_argument('amount', type=inputs.regex("\d+[.]?\d{2}"), help='Invalid Amount format', required=True)
-transfer_text_param.add_argument('message', type=str, help='An optional value',required=False)
+        else:
+            return json_response(res='error', reason='you must be logged in first')
 
-model = api.model('Transfer_Funds_Sms', {
-    'number': fields.String(description='Number of the user to recieve the funds...',required=True),
-    'amount': fields.String(description='Amount To Send...',required=True),
-	'message': fields.String(description='optional message to accompany the funds transfer')
-})
-@api.expect(model, validate=True)
+
+get_params = api.parser()
+get_params.add_argument('number', required=True, help='Should not be left blank')
+get_params.add_argument('amount', required=True, help='Should not be left blank')
+get_params.add_argument('message', required=False, help='An optional value')
+get_params.add_argument('paypin', required=True, help='should not be left blank')
+
+
 @api.doc(responses={
     200: 'success',
     401: 'failed'
+}, params={
+    'email': 'A email',
+    'amount': 'the amount',
+    'message': 'which is optional',
+    'paypin': 'paypin to verify before transaction'
 })
-class send_transact_sms(Resource):
+class SendTransactEmail(Resource):
+    def post(self):
+        if 'user' in session and 'device' in session:
+            param = get_params.parse_args()
+            user = User()
 
-	"""
-	This class handles the sending of fuuds among user's and non-user's of paymiumm using sms, to start using the paymiumm magic functionality
-	it takes three parameter which is number,amount,message
-	method:Post
-	"""
+            if user.verify_paypin(param.get('paypin')):
 
-	def post(self):
-		params = transfer_text_param.parse_args()
-		number=params.get("number")
-		msg=params.get("message")
-		amount=params.get("amount")
+                execute_action = send_link_with_text(number=param.get('number'), amount=param.get('amount'), user_id=session['user'], message=param.get('message'))
 
-		if 'user' in session and 'device' in session:
-		# 	pass
+                if execute_action:
+                    return json_response(res='sent', reason='text was sent successfully')
 
-			execute_action = transfer_funds_with_number(number=number, amount=amount, message=msg)
+                elif not execute_action:
+                    json_response(res='failed', reason='an error occurred while processing')
+            else:
+                return json_response(res='invalid', reason='invalid paypin')
 
-			if execute_action:
-				return json_response(res='sent', reason='text was sent successfully')
+        else:
+            return json_response(res='error', reason='you must be logged in first')
 
-			elif not execute_action:
-				return json_response(res='failed', reason='an error occured while processing')
-		else:
 
-			return json_response(res='not_logged', reason='no user is loggged in')
+# ---------------------------------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------------------
+# this class below handles payment from non users
+# --------------------------------------------------------------------------------------------------------------------------------
+get_details = api.parse()
+get_details.add_argument('details', required=True, help='invalid details')
+get_details.add_argument('account_name')
+get_details.add_argument('account_number')
+get_details.add_argument('account_type')
+
+
+class ReceiveTransactDetails(Resource):
+    def post(self):
+        user = get_details.parse_args()
+        # validating if the link is still valid or not
+        validate_data = confirm_link(email=user.get('details'))
+
+        make_response({validate_data['amount']}) # returning the amount back to the non-user
+
+        if validate_data:
+            token = {'access_token': current_app.config['TOKEN']} # token to be used by bank api
+
+            headers = {
+                'Content-Type': 'application/json'
+            }
+
+            data = {
+                'customer_id': validate_data['user_id'],
+                'amount': user['amount'],
+                'account_name': user['amount_name'],
+                'account_number': user['account_number'],
+                'account_type': user['account_type']
+
+            }
+
+            payload = json.dumps(data)
+
+            r = requests.post('', data=payload, params=headers, token=token) # making a call to bank api
+
+            if r.ok: # still going to add some statements in the nearest future..
+                saved_payment_info = save_payment_details(reference_no=r.content['reference'])
+
+                if saved_payment_info:
+                    pass
+                else:
+                    pass
+
+                user = User.query.filter_by(username=validate_data['user_id']).first()
+
+                subject = '' # still going to work on this
+                html = ''  # still going to work on this
+
+                send_transaction_details(user.email, subject, html)  # send email to the user about transaction details
+
+            return json_response(res='success', reason='the transaction went successfully')
+        else:
+            return json_response(res='failed', reason='the link has expired')
+
