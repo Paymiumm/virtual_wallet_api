@@ -18,9 +18,10 @@ from flask_mail import Message
 from ext_declaration import mail
 from flask import current_app, render_template
 from security import generate_confirmation_token, resend_confirmation_token, generate_transact_url, confirm_transact_url
-from models import User
+from models import User, TransactDetails
 import socket
 import re
+from sqlalchemy.exc import IntegrityError
 import datetime
 import threading
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -259,9 +260,9 @@ def send_one_time_mail(user):
         return False
 
 
-def send_link_with_email(email, amount, message=None):
+def send_link_with_email(email, amount, user_id, message=None):
     try:
-        details = {'email': email, 'amount': amount}
+        details = {'email': email, 'amount': amount, 'customer_id': user_id}
 
         token = generate_transact_url(details)
 
@@ -269,6 +270,7 @@ def send_link_with_email(email, amount, message=None):
         subject = message
 
         if message is None:
+            subject = ''
 
             send_email(email, subject, html)
 
@@ -286,22 +288,60 @@ def send_link_with_email(email, amount, message=None):
         return False
 
 
-def send_link_with_text(number, amount, message=None):
+def send_link_with_text(number, amount, user_id, message=None):
     try:
-        details = {'number': number, 'amount': amount}
+        details = {'number': number, 'amount': amount, 'customer_id': user_id}
         token = generate_transact_url(details)
 
-        subject = message
+        subject = 'your payment link\n {}'.format(token) # add your own customize msg here
 
         if message is None:
 
-            send_sms(to_number=number, body=token)
+            send_sms(to_number=number, body=subject)
 
         else:
-            send_sms(to_number=number, body=token)
+            subject = '{}\n,  {}'.format(message, token)
+            send_sms(to_number=number, body=subject)
 
         return True
 
     except Exception as e:
         print(e)
         return False
+
+
+def confirm_link(email):
+    try:
+        details = confirm_transact_url(email)
+        print(details)
+
+        return True
+
+    except Exception as e:
+        print(e)
+        return False
+
+
+def save_payment_details(reference_no):
+    try:
+        user = TransactDetails(reference_id=reference_no)
+
+        db.session.add(user)
+        db.session.commit()
+
+        return True
+
+    except IntegrityError:
+        db.session.rollback()
+        return False
+
+
+def send_transaction_details(email, subject, html):
+    try:
+        send_email(user, subject, html)
+
+    except Exception as e:
+        return False
+
+
+
